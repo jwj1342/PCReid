@@ -18,8 +18,8 @@ def extract_features_no_grad(data_loader, feature_dimension, net, modal=0):
             feats_cls = net(input_imgs, input_imgs, input_imgs, input_imgs, modal=modal)
             features[ptr:ptr + batch_num, :] = feats_cls.detach().cpu().numpy()
             ptr += batch_num
-            pids.extend(pids)
-            camids.extend(camids)
+            pids.extend(pid)
+            camids.extend(camid)
     return features, np.asarray(pids), np.asarray(camids)
 
 def test_general(gallery_loader, query_loader, net, ngall, nquery, modal=0):

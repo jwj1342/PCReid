@@ -1,3 +1,4 @@
+import time
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -51,7 +52,8 @@ criterion_Triplet = OriTripletLoss(batch_size=loader_batch, margin=margin)  # �
 criterion_Triplet.to('cuda')  # 将三元组损失函数发送到GPU上
 criterion_CrossEntropy.to('cuda')  # 将交叉熵损失函数发送到GPU上
 
-optimizer = torch.optim.Adam(net.parameters(), lr=0.0003, weight_decay=5e-4)  # 优化器
+# optimizer = torch.optim.Adam(net.parameters(), lr=0.0003, weight_decay=5e-4)  # 优化器
+optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=1e-3,weight_decay=5e-4)  # 优化器
 for epoch in range(200):
     rgb_pos, ir_pos = GenIdx(data_set.rgb_label, data_set.ir_label)
     sampler = IdentitySampler(data_set.ir_label, data_set.rgb_label, rgb_pos, ir_pos, num_pos, batch_size)
@@ -66,6 +68,8 @@ for epoch in range(200):
         drop_last=True,
     )
     net.train()
+    start_time=time.time()
+    accumulated_loss = 0.0  # 初始化累计损失
     for batch_idx, (imgs_ir, imgs_ir_p, pid_ir, camid_ir, imgs_rgb, imgs_rgb_p, pid_rgb, camid_rgb) in enumerate(
             train_loader):
         input1 = imgs_rgb
@@ -91,17 +95,23 @@ for epoch in range(200):
         loss_tri, _ = criterion_Triplet(output_pool, labels)  # 计算三元组损失
 
         loss = loss_id + loss_tri  # 总损失
+        accumulated_loss += loss.item()  # 累加损失
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        print('Epoch: [{}][{}/{}]\t'
-              'Loss {:.4f} Loss_id {:.4f} Loss_tri {:.4f} '.format(
-            epoch, batch_idx, len(train_loader), loss.item(), loss_id.item(), loss_tri.item()))
-
-        break
-    if epoch % 10 == 0:
+        # print('Epoch: [{}][{}/{}]\t'
+        #       'Loss {:.4f} Loss_id {:.4f} Loss_tri {:.4f} '.format(
+        #     epoch, batch_idx, len(train_loader), loss.item(), loss_id.item(), loss_tri.item()))
+        if batch_idx % 20 == 0 and batch_idx > 0:  # 确保batch_idx为20的倍数且不为0时才进行打印
+            end_time = time.time()  # 记录当前时间
+            elapsed_time = end_time - start_time  # 计算经过的时间
+            avg_loss = accumulated_loss / 20  # 计算平均损失
+            print('Epoch: [{}][{}/{}]\t'
+              'Avg Loss {:.4f} Loss_id {:.4f} Loss_tri {:.4f} Time {:.2f} seconds'.format(
+            epoch, batch_idx, len(train_loader), avg_loss, loss_id.item(), loss_tri.item(), elapsed_time))
+            accumulated_loss = 0.0  # 重置累计损失为0，为下一个20个批次做准备
+            start_time=time.time()
+    if epoch % 5 == 0 and epoch!=0:
         net.eval()
         cmc_t2v, mAP_t2v = test_general(gallery_loader, query_loader, net, ngall, nquery, modal=1)
-
         cmc_v2t, mAP_v2t = test_general(gallery_loader_1, query_loader_1, net, ngall_1, nquery_1, modal=2)
-    break

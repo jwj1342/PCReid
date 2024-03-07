@@ -1,2 +1,6 @@
 /past/
 /.idea/*
+/.ipynb_checkpoints/*
+/.vscode/*
+/__pycache__/*
+

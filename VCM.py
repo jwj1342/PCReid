@@ -189,7 +189,7 @@ class VCM(object):
             if m == 1:
                 img_names = names[start_index - 1:end_index]
                 # img_names = [filename[:-4] + ".npy" for filename in img_names]
-                pose_paths = osp.join(self.root, 'train/')
+                pose_paths = osp.join(self.root, 'Train/')
                 img_ir_paths = [osp.join(pose_paths, decoder_pic_path(img_name)) for img_name in img_names]
                 if len(img_ir_paths) >= min_seq_len:
                     img_ir_paths = tuple(img_ir_paths)
@@ -200,7 +200,7 @@ class VCM(object):
             else:
                 img_names = names[start_index - 1:end_index]
                 # img_names = [filename[:-4] + ".npy" for filename in img_names]
-                pose_paths = osp.join(self.root, 'train/')
+                pose_paths = osp.join(self.root, 'Train/')
                 img_rgb_paths = [osp.join(pose_paths, decoder_pic_path(img_name)) for img_name in img_names]
                 if len(img_rgb_paths) >= min_seq_len:
                     img_rgb_paths = tuple(img_rgb_paths)
@@ -232,7 +232,7 @@ class VCM(object):
 
             img_names = names[start_index - 1:end_index]
             # img_names = [filename[:-4] + ".npy" for filename in img_names]
-            pose_paths = osp.join(self.root, 'test/')
+            pose_paths = osp.join(self.root, 'Test/')
             img_paths = [osp.join(pose_paths, decoder_pic_path(img_name)) for img_name in img_names]
             if len(img_paths) >= min_seq_len:
                 img_paths = tuple(img_paths)
