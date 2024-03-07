@@ -20,6 +20,7 @@ num_pos = configs['Model_Settings']['num_pos']  # 从配置文件中获取num_po
 workers = configs['Training_Settings']['workers']  # 从配置文件中获取workers
 margin = configs['Model_Settings']['margin']  # 从配置文件中获取margin
 test_batch = configs['Training_Settings']['test_batch']  # 从配置文件中获取test_batch
+lr = configs['Training_Settings']['lr']  # 从配置文件中获取学习率
 loader_batch = batch_size * num_pos
 
 query_loader = DataLoader(
@@ -54,24 +55,25 @@ criterion_CrossEntropy.to('cuda')  # 将交叉熵损失函数发送到GPU上
 
 # optimizer = torch.optim.Adam(net.parameters(), lr=0.0003, weight_decay=5e-4)  # 优化器
 optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=1e-3, weight_decay=5e-4)  # 优化器
-for epoch in range(200):
-    rgb_pos, ir_pos = GenIdx(data_set.rgb_label, data_set.ir_label)
-    sampler = IdentitySampler(data_set.ir_label, data_set.rgb_label, rgb_pos, ir_pos, num_pos, batch_size)
-    index1 = sampler.index1
-    index2 = sampler.index2
 
-    train_loader = DataLoader(  # 从这个地方引用了数据加载器
-        VideoDataset_train(data_set.train_ir, data_set.train_rgb, seq_len=seq_length, sample='video_train',
-                           transform=transform_train, index1=index1, index2=index2),
-        sampler=sampler,
-        batch_size=loader_batch, num_workers=workers,
-        drop_last=True,
-    )
+rgb_pos, ir_pos = GenIdx(data_set.rgb_label, data_set.ir_label)
+sampler = IdentitySampler(data_set.ir_label, data_set.rgb_label, rgb_pos, ir_pos, num_pos, batch_size)
+index1 = sampler.index1
+index2 = sampler.index2
+
+train_loader = DataLoader(  # 从这个地方引用了数据加载器
+    VideoDataset_train(data_set.train_ir, data_set.train_rgb, seq_len=seq_length, sample='video_train',
+                        transform=transform_train, index1=index1, index2=index2),
+    sampler=sampler,
+    batch_size=loader_batch, num_workers=workers,
+    drop_last=True,
+)
+
+for epoch in range(200):
     net.train()
     start_time = time.time()
     accumulated_loss = 0.0  # 初始化累计损失
-    for batch_idx, (imgs_ir, imgs_ir_p, pid_ir, camid_ir, imgs_rgb, imgs_rgb_p, pid_rgb, camid_rgb) in enumerate(
-            train_loader):
+    for batch_idx, (imgs_ir, imgs_ir_p, pid_ir, camid_ir, imgs_rgb, imgs_rgb_p, pid_rgb, camid_rgb) in enumerate(train_loader):
         input1 = imgs_rgb
         input3 = imgs_rgb_p
         input2 = imgs_ir
@@ -95,7 +97,7 @@ for epoch in range(200):
         loss_tri, _ = criterion_Triplet(output_pool, labels)  # 计算三元组损失
 
         loss = loss_id + loss_tri  # 总损失
-        accumulated_loss += loss.item()  # 累加损失
+        accumulated_loss += loss.item()  # 累计损失可视化用
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -109,7 +111,9 @@ for epoch in range(200):
                 epoch, batch_idx, len(train_loader), avg_loss, loss_id.item(), loss_tri.item(), elapsed_time))
             accumulated_loss = 0.0  # 重置累计损失为0，为下一个20个批次做准备
             start_time = time.time()
-    if epoch % 5 == 0 and epoch != 0:
+        
+    if epoch % 5 == 0:
         net.eval()
         cmc_t2v, mAP_t2v = test_general(gallery_loader, query_loader, net, ngall, nquery, modal=1)
         cmc_v2t, mAP_v2t = test_general(gallery_loader_1, query_loader_1, net, ngall_1, nquery_1, modal=2)
+    break

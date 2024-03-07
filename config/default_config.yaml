@@ -6,7 +6,7 @@ Training_Settings:
   test_batch: 32
   save_epoch: 20
   seed: 0
-  workers: 8
+  workers: 12
   seq_len: 12
 
 Model_Settings:

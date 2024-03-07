@@ -148,10 +148,8 @@ class PoseFeatureNet(nn.Module):
         rgb_feature_cls = self.fc_after_lstm(rgb_feature)
         ir_feature_cls = self.fc_after_lstm(ir_feature)
 
-        if self.training:
-            return rgb_feature, ir_feature
-        else:
-            return rgb_feature_cls, ir_feature_cls
+        return rgb_feature, ir_feature
+        
 
 
 class embed_net(nn.Module):
@@ -195,16 +193,17 @@ class embed_net(nn.Module):
             x = torch.cat((x1, x2), 0)
 
             p = self.pose_feature_net(p1, p2)
-
+            p = torch.cat((p[0], p[1]), 0)
         elif modal == 1:
             x = self.visible_module(x1)
             p = self.pose_feature_net(p1, p2)
+            p = p[0]
         elif modal == 2:
             x = self.thermal_module(x2)
             p = self.pose_feature_net(p1, p2)
+            p = p[1]
         x = self.base_resnet(x)
-        p = torch.cat((p[0], p[1]), 0)
-
+        
         x_h = self.avg_pool(x).squeeze()
         x_h = x_h.view(x_h.size(0) // t, t, -1).permute(1, 0, 2)
         output, _ = self.lstm(x_h)

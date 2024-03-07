@@ -324,7 +324,7 @@ if __name__ == '__main__':
                                       index1=index1, index2=index2)
 
     train_loader = torch.utils.data.DataLoader(
-        pose_dataset, batch_size=64, shuffle=False, num_workers=0, pin_memory=True)
+        pose_dataset, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
     # TODO: 这里的num_workers=0，无法多线程读取hdf5文件。在之后的过程中需要将hdf5文件的打开放在__init__函数中，以便多线程读取。
 
     for batch_idx, (imgs_ir, imgs_ir_p, pids_ir, camids_ir, imgs_rgb, imgs_rgb_p, pids_rgb, camids_rgb) in enumerate(
