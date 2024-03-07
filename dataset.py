@@ -47,7 +47,7 @@ class VideoDataset_train(Dataset):
         self.index2 = index2
 
 
-        self.hdf5_file = h5py.File('%s' % train_hdf_, 'r')
+        # self.hdf5_file = h5py.File('%s' % train_hdf_, 'r')
 
     def __len__(self):
         return len(self.dataset_rgb)
@@ -60,7 +60,7 @@ class VideoDataset_train(Dataset):
         num_rgb = len(img_rgb_paths)
 
         S = self.seq_len  # 这个地方的S是指的seq_len
-
+        hdf5_file = h5py.File('%s' % train_hdf_, 'r')
         sample_clip_ir = []
         frame_indices_ir = list(range(num_ir))
         if num_ir < S:
@@ -120,7 +120,7 @@ class VideoDataset_train(Dataset):
                 img = read_image(img_path)
                 img = np.array(img)
 
-                img_p = self.hdf5_file[img_key_p][()]
+                img_p = hdf5_file[img_key_p][()]
 
                 if self.transform is not None:
                     img = self.transform(img)
@@ -156,7 +156,7 @@ class VideoDataset_train(Dataset):
                 img = read_image(img_path)
                 img = np.array(img)
 
-                img_p = self.hdf5_file[img_key_p][()]
+                img_p = hdf5_file[img_key_p][()]
 
                 if self.transform is not None:
                     img = self.transform(img)
@@ -185,7 +185,7 @@ class VideoDataset_train(Dataset):
                 img = read_image(img_path)
                 img = np.array(img)
 
-                img_p = self.hdf5_file[img_key_p][()]
+                img_p = hdf5_file[img_key_p][()]
 
                 if self.transform is not None:
                     img = self.transform(img)
@@ -210,7 +210,7 @@ class VideoDataset_train(Dataset):
                 img = read_image(img_path)
                 img = np.array(img)
 
-                img_p = self.hdf5_file[img_key_p][()]
+                img_p = hdf5_file[img_key_p][()]
 
                 if self.transform is not None:
                     img = self.transform(img)
@@ -240,7 +240,7 @@ class VideoDataset_test(Dataset):
         self.transform = transform
 
 
-        self.hdf5_file = h5py.File('%s' % test_hdf_, 'r')
+        # self.hdf5_file = h5py.File('%s' % test_hdf_, 'r')
 
     def __len__(self):
         # 返回数据集中样本的个数
@@ -254,6 +254,8 @@ class VideoDataset_test(Dataset):
         S = self.seq_len
         sample_clip_ir = []
         frame_indices_ir = list(range(num))
+
+        hdf5_file = h5py.File('%s' % test_hdf_, 'r')
 
         if num < S:
             strip_ir = list(range(num)) + [frame_indices_ir[-1]] * (S - num)
@@ -282,7 +284,7 @@ class VideoDataset_test(Dataset):
                 img = read_image(img_path)
                 img = np.array(img)
 
-                img_p = self.hdf5_file[img_key_p][()]
+                img_p = hdf5_file[img_key_p][()]
 
                 if self.transform is not None:
                     img = self.transform(img)
