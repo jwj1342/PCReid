@@ -130,14 +130,14 @@ class IdentitySampler(Sampler):
                     # index = np.hstack((index, sample_color))
                     # index = np.hstack((index, sample_thermal))
         self.N = int(N / (batchSize * num_pos)) * (batchSize * num_pos)
-        print("index1.shape = {}".format(index1.shape))
-        print("index2.shape = {}".format(index2.shape))
+        # print("index1.shape = {}".format(index1.shape))
+        # print("index2.shape = {}".format(index2.shape))
         # print("index.shape = {}".format(index.shape))
-        print("index1 = {}".format(index1))
-        print("index2 = {}".format(index2))
+        # print("index1 = {}".format(index1))
+        # print("index2 = {}".format(index2))
         # print("index = {}".format(index))
-        print("N = {}".format(self.N))
-        print("return iter {}".format(np.arange(len(index1))))
+        # print("N = {}".format(self.N))
+        # print("return iter {}".format(np.arange(len(index1))))
         self.index1 = index1
         self.index2 = index2
         # self.index = list(index)
@@ -155,3 +155,7 @@ class IdentitySampler(Sampler):
 def save_model(net, path):
     """保存模型参数"""
     torch.save(net.state_dict(), path)
+
+def load_model(net, path):
+    """加载模型参数"""
+    net.load_state_dict(torch.load(path))

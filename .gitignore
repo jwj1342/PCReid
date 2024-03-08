@@ -3,4 +3,7 @@
 /.ipynb_checkpoints/*
 /.vscode/*
 /__pycache__/*
-
+/wandb/*
+config/.ipynb_checkpoints/default_config-checkpoint.yaml
+config/__pycache__/config.cpython-38.pyc
+*.pth

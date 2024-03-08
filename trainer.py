@@ -10,7 +10,7 @@ from feature_net import embed_net as FeatureNet
 from loss import OriTripletLoss
 from test import test_general
 from transforms import transform_train, transform_test
-from util import IdentitySampler, GenIdx, save_model
+from util import IdentitySampler, GenIdx, load_model, save_model
 import wandb
 
 data_set = VCM()  # 从这个地方引用了数据集
@@ -22,6 +22,7 @@ workers = configs['Training_Settings']['workers']  # 从配置文件中获取wor
 margin = configs['Model_Settings']['margin']  # 从配置文件中获取margin
 test_batch = configs['Training_Settings']['test_batch']  # 从配置文件中获取test_batch
 lr = configs['Training_Settings']['lr']  # 从配置文件中获取学习率
+epochs = configs['Training_Settings']['epochs']  # 从配置文件中获取epoch
 loader_batch = batch_size * num_pos
 
 query_loader = DataLoader(
@@ -55,7 +56,7 @@ criterion_Triplet.to('cuda')  # 将三元组损失函数发送到GPU上
 criterion_CrossEntropy.to('cuda')  # 将交叉熵损失函数发送到GPU上
 
 # optimizer = torch.optim.Adam(net.parameters(), lr=0.0003, weight_decay=5e-4)  # 优化器
-optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=1e-3, weight_decay=5e-4)  # 优化器
+optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=1e-3, weight_decay=5e-4)  # 优化器
 
 rgb_pos, ir_pos = GenIdx(data_set.rgb_label, data_set.ir_label)
 sampler = IdentitySampler(data_set.ir_label, data_set.rgb_label, rgb_pos, ir_pos, num_pos, batch_size)
@@ -76,8 +77,10 @@ wandb.init(
     config=configs,
     notes="初步融合原本模态与pose模态的训练过程",
 )
-
-for epoch in range(200):
+best_mAP = 0
+load_model(net, "best_mAp_sum_0.29.pth")
+wandb.watch(net)
+for epoch in range(epochs):
     net.train()
     start_time = time.time()
     accumulated_loss = 0.0  # 初始化累计损失
@@ -129,7 +132,7 @@ for epoch in range(200):
             accumulated_loss = 0.0  # 重置累计损失为0，为下一个20个批次做准备
             start_time = time.time()
 
-    if epoch % 5 == 0:
+    if epoch > 0:
         net.eval()
         cmc_t2v, mAP_t2v = test_general(gallery_loader, query_loader, net, ngall, nquery, modal=1)
         wandb.log({"epoch": epoch, "mAP_t2v": mAP_t2v})
@@ -141,4 +144,6 @@ for epoch in range(200):
         wandb.log({"epoch": epoch, "v2t-Rank-1": cmc_v2t[0]})
         wandb.log({"epoch": epoch, "v2t-Rank-20": cmc_v2t[4]})
 
-        save_model(net, f"exp/{epoch}_mAP_t2v:{mAP_t2v}_mAP_v2t:{mAP_v2t}.pth")
+        if mAP_t2v + mAP_v2t > best_mAP:
+            best_mAP = mAP_t2v + mAP_v2t
+            save_model(net, f"best_mAp_sum_{best_mAP}.pth")
