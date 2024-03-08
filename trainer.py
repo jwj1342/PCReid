@@ -10,7 +10,8 @@ from feature_net import embed_net as FeatureNet
 from loss import OriTripletLoss
 from test import test_general
 from transforms import transform_train, transform_test
-from util import IdentitySampler, GenIdx
+from util import IdentitySampler, GenIdx, save_model
+import wandb
 
 data_set = VCM()  # 从这个地方引用了数据集
 configs = ExperimentConfig().get_config()  # 导入配置文件
@@ -63,17 +64,25 @@ index2 = sampler.index2
 
 train_loader = DataLoader(  # 从这个地方引用了数据加载器
     VideoDataset_train(data_set.train_ir, data_set.train_rgb, seq_len=seq_length, sample='video_train',
-                        transform=transform_train, index1=index1, index2=index2),
+                       transform=transform_train, index1=index1, index2=index2),
     sampler=sampler,
     batch_size=loader_batch, num_workers=workers,
     drop_last=True,
+)
+
+wandb.login()
+wandb.init(
+    project="PoseReid",
+    config=configs,
+    notes="初步融合原本模态与pose模态的训练过程",
 )
 
 for epoch in range(200):
     net.train()
     start_time = time.time()
     accumulated_loss = 0.0  # 初始化累计损失
-    for batch_idx, (imgs_ir, imgs_ir_p, pid_ir, camid_ir, imgs_rgb, imgs_rgb_p, pid_rgb, camid_rgb) in enumerate(train_loader):
+    for batch_idx, (imgs_ir, imgs_ir_p, pid_ir, camid_ir, imgs_rgb, imgs_rgb_p, pid_rgb, camid_rgb) in enumerate(
+            train_loader):
         input1 = imgs_rgb
         input3 = imgs_rgb_p
         input2 = imgs_ir
@@ -109,11 +118,27 @@ for epoch in range(200):
             print('Epoch: [{}][{}/{}]\t'
                   'Avg Loss {:.4f} Loss_id {:.4f} Loss_tri {:.4f} Time {:.2f} seconds'.format(
                 epoch, batch_idx, len(train_loader), avg_loss, loss_id.item(), loss_tri.item(), elapsed_time))
+            wandb.log({
+                'Epoch': epoch,
+                'Batch_idx': batch_idx,
+                'Avg Loss': avg_loss,
+                'Loss_id': loss_id.item(),
+                'Loss_tri': loss_tri.item(),
+                'Time': elapsed_time
+            })
             accumulated_loss = 0.0  # 重置累计损失为0，为下一个20个批次做准备
             start_time = time.time()
-        
+
     if epoch % 5 == 0:
         net.eval()
         cmc_t2v, mAP_t2v = test_general(gallery_loader, query_loader, net, ngall, nquery, modal=1)
+        wandb.log({"epoch": epoch, "mAP_t2v": mAP_t2v})
+        wandb.log({"epoch": epoch, "t2v-Rank-1": cmc_t2v[0]})
+        wandb.log({"epoch": epoch, "t2v-Rank-20": cmc_t2v[4]})
+
         cmc_v2t, mAP_v2t = test_general(gallery_loader_1, query_loader_1, net, ngall_1, nquery_1, modal=2)
-    break
+        wandb.log({"epoch": epoch, "mAP_v2t": mAP_v2t})
+        wandb.log({"epoch": epoch, "v2t-Rank-1": cmc_v2t[0]})
+        wandb.log({"epoch": epoch, "v2t-Rank-20": cmc_v2t[4]})
+
+        save_model(net, f"exp/{epoch}_mAP_t2v:{mAP_t2v}_mAP_v2t:{mAP_v2t}.pth")

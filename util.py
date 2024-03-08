@@ -18,6 +18,7 @@ def GenIdx(train_color_label, train_thermal_label):
         thermal_pos.append(tmp_pos)
     return color_pos, thermal_pos
 
+
 def extract_features_no_grad(data_loader, feature_dimension, net):
     """提取特征的通用函数"""
     features = np.zeros((len(data_loader.dataset), feature_dimension))
@@ -34,6 +35,8 @@ def extract_features_no_grad(data_loader, feature_dimension, net):
             pids.extend(pids_batch)
             camids.extend(camids_batch)
     return features, np.asarray(pids), np.asarray(camids)
+
+
 def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=20):
     # print("it is evaluate ing now ")
     num_q, num_g = distmat.shape
@@ -58,7 +61,7 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=20):
         keep = np.invert(remove)
 
         # compute cmc curve
-        orig_cmc = matches[q_idx][keep] # binary vector, positions with value 1 are correct matches
+        orig_cmc = matches[q_idx][keep]  # binary vector, positions with value 1 are correct matches
         if not np.any(orig_cmc):
             # this condition is true when query identity does not appear in gallery
             continue
@@ -73,7 +76,7 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=20):
         # reference: https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Average_precision
         num_rel = orig_cmc.sum()
         tmp_cmc = orig_cmc.cumsum()
-        tmp_cmc = [x / (i+1.) for i, x in enumerate(tmp_cmc)]
+        tmp_cmc = [x / (i + 1.) for i, x in enumerate(tmp_cmc)]
         tmp_cmc = np.asarray(tmp_cmc) * orig_cmc
         AP = tmp_cmc.sum() / num_rel
         all_AP.append(AP)
@@ -85,6 +88,8 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=20):
     mAP = np.mean(all_AP)
 
     return all_cmc, mAP
+
+
 class IdentitySampler(Sampler):
     """Sample person identities evenly in each batch.
         Args:
@@ -145,3 +150,8 @@ class IdentitySampler(Sampler):
 
     def __len__(self):
         return self.N
+
+
+def save_model(net, path):
+    """保存模型参数"""
+    torch.save(net.state_dict(), path)
