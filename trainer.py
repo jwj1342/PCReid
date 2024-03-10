@@ -78,7 +78,7 @@ wandb.init(
     notes="初步融合原本模态与pose模态的训练过程",
 )
 best_mAP = 0
-load_model(net, "best_mAp_sum_0.29.pth")
+# load_model(net, "best_mAp_sum_0.29.pth")
 wandb.watch(net)
 for epoch in range(epochs):
     net.train()
@@ -132,7 +132,7 @@ for epoch in range(epochs):
             accumulated_loss = 0.0  # 重置累计损失为0，为下一个20个批次做准备
             start_time = time.time()
 
-    if epoch > 0:
+    if epoch %5==0:
         net.eval()
         cmc_t2v, mAP_t2v = test_general(gallery_loader, query_loader, net, ngall, nquery, modal=1)
         wandb.log({"epoch": epoch, "mAP_t2v": mAP_t2v})
@@ -146,4 +146,4 @@ for epoch in range(epochs):
 
         if mAP_t2v + mAP_v2t > best_mAP:
             best_mAP = mAP_t2v + mAP_v2t
-            save_model(net, f"best_mAp_sum_{best_mAP}.pth")
+            save_model(net, f"best_mAp_sum_pure_redoBase_0.005_{best_mAP}.pth")

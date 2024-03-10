@@ -74,12 +74,19 @@ class base_resnet(nn.Module):
         self.base = model_base
         self.layer4 = copy.deepcopy(self.base.layer4)
 
+    # def forward(self, x):
+    #     x = self.base.layer1(x)
+    #     x = self.base.layer2(x)
+    #     x = self.base.layer3(x)
+    #     x = self.base.layer4(x)
+    #     return x
     def forward(self, x):
         x = self.base.layer1(x)
         x = self.base.layer2(x)
         x = self.base.layer3(x)
-        x = self.base.layer4(x)
+        x = self.layer4(x)
         return x
+
 
 
 class modal_Classifier(nn.Module):
@@ -161,7 +168,8 @@ class embed_net(nn.Module):
         self.pose_feature_net = PoseFeatureNet(class_num=class_num, input_dim=6, seq_len=12, num_joints=19,
                                                lstm_hidden=256, fc_hidden=128)
         pool_dim = 2048
-        self.combined_feature_num = 2048 + 512
+        # self.combined_feature_num = 2048 + 512
+        self.combined_feature_num = 2048 
         self.l2norm = Normalize(2)
 
         self.bottleneck = nn.BatchNorm1d(pool_dim)
@@ -181,6 +189,44 @@ class embed_net(nn.Module):
         self.lstm = nn.LSTM(2048, 2048, 2)
 
 
+    # def forward(self, x1, x2, p1, p2, modal=0, seq_len=12):
+    #     b, c, h, w = x1.size()
+    #     t = seq_len
+
+    #     x1 = x1.view(int(b * seq_len), int(c / seq_len), h, w)
+    #     x2 = x2.view(int(b * seq_len), int(c / seq_len), h, w)
+    #     if modal == 0:
+    #         x1 = self.visible_module(x1)
+    #         x2 = self.thermal_module(x2)
+    #         x = torch.cat((x1, x2), 0)
+
+    #         p = self.pose_feature_net(p1, p2)
+    #         p = torch.cat((p[0], p[1]), 0)
+    #     elif modal == 1:
+    #         x = self.visible_module(x1)
+    #         p = self.pose_feature_net(p1, p2)
+    #         p = p[0]
+    #     elif modal == 2:
+    #         x = self.thermal_module(x2)
+    #         p = self.pose_feature_net(p1, p2)
+    #         p = p[1]
+    #     x = self.base_resnet(x)
+        
+    #     x_h = self.avg_pool(x).squeeze()
+    #     x_h = x_h.view(x_h.size(0) // t, t, -1).permute(1, 0, 2)
+    #     output, _ = self.lstm(x_h)
+    #     t = output[-1]
+    #     # x_pool=torch.cat(t,x_h)
+
+    #     feat = self.bottleneck(t)
+    #     # 如果处于训练阶段，返回融合后的特征向量和全连接层输出。
+    #     # 如果处于测试阶段，返回经过L2范数归一化后的特征向量。
+    #     combined_feature = torch.cat([p, feat], dim=1)
+
+    #     if self.training:
+    #         return combined_feature, self.classifier(combined_feature)
+    #     else:
+    #         return self.l2norm(feat)
     def forward(self, x1, x2, p1, p2, modal=0, seq_len=12):
         b, c, h, w = x1.size()
         t = seq_len
@@ -192,33 +238,39 @@ class embed_net(nn.Module):
             x2 = self.thermal_module(x2)
             x = torch.cat((x1, x2), 0)
 
-            p = self.pose_feature_net(p1, p2)
-            p = torch.cat((p[0], p[1]), 0)
+            # p = self.pose_feature_net(p1, p2)
+            # p = torch.cat((p[0], p[1]), 0)
         elif modal == 1:
             x = self.visible_module(x1)
-            p = self.pose_feature_net(p1, p2)
-            p = p[0]
+            # p = self.pose_feature_net(p1, p2)
+            # p = p[0]
         elif modal == 2:
             x = self.thermal_module(x2)
-            p = self.pose_feature_net(p1, p2)
-            p = p[1]
+            # p = self.pose_feature_net(p1, p2)
+            # p = p[1]
         x = self.base_resnet(x)
         
-        x_h = self.avg_pool(x).squeeze()
-        x_h = x_h.view(x_h.size(0) // t, t, -1).permute(1, 0, 2)
-        output, _ = self.lstm(x_h)
+        x_l = self.avg_pool(x).squeeze()
+        x_l = x_l.view(x_l.size(0) // t, t, -1).permute(1, 0, 2)
+
+        h0 = torch.zeros(2, x_l.shape[1], x_l.shape[2]).cuda()
+        c0 = torch.zeros(2, x_l.shape[1], x_l.shape[2]).cuda()
+        if self.training: self.lstm.flatten_parameters()
+        # 接着，将x_l输入到一个LSTM层中进行序列建模
+        output, (hn, cn) = self.lstm(x_l, (h0, c0))
         t = output[-1]
         # x_pool=torch.cat(t,x_h)
 
         feat = self.bottleneck(t)
         # 如果处于训练阶段，返回融合后的特征向量和全连接层输出。
         # 如果处于测试阶段，返回经过L2范数归一化后的特征向量。
-        combined_feature = torch.cat([p, feat], dim=1)
+        combined_feature = feat
 
         if self.training:
             return combined_feature, self.classifier(combined_feature)
         else:
             return self.l2norm(feat)
+
 
 
 if __name__ == '__main__':

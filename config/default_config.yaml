@@ -1,7 +1,7 @@
 Training_Settings:
-  lr: 0.001
+  lr: 0.005
   optim: "sgd"
-  epochs: 10
+  epochs: 21
   batch_size: 8
   test_batch: 32
   save_epoch: 20
